@@ -1,7 +1,7 @@
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 
-interface MathRendererProps {
-    input?: string;
+type MathRendererProps = {
+    input: string;
 }
 
 function translate(input: string) {
@@ -21,7 +21,7 @@ function translate(input: string) {
     return input;
 }
 
-export default function MathRenderer({input=""} : MathRendererProps) {
+export default function MathRenderer({ input }: MathRendererProps) {
     return (
         <MathJaxContext>
             <MathJax>

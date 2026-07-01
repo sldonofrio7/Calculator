@@ -1,67 +1,58 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { all, create } from "mathjs";
 
 import MathRenderer from "./MathRenderer";
 import { validateInput } from "../utils/validateInput";
 
+import "./Calculator.types"
+
 import "./Calculator.css";
-
-// TODO rethink calculation logic, is it better to create the equation as an array of strings and then combine before evaluation?
-// This would likely allow for easier evaluation handling, especially with custom functions and sqrt etc.
-
-// Update, mathJS allows for customFunction handling, making it even easier
-
-interface Function {
-    label?: string;
-    onClick: (...args: string[]) => string[];
-}
-
-interface CalculatorProps {
-    template?: string;
-    validation?: boolean;
-    functions?: Function[];
-}
 
 const math = create(all)
 
-function initializeCustomFunctions({ functions } : CalculatorProps) {
-    
-    if (!functions?.length) return;
-
-    const exportFunctions = functions?.map((funct) => {
-        const functionName = funct.label?.trim() || funct.onClick.name;
-
+function retrieveAndValidateCustomFunctionLabels(functions: Function[]) {
+    return functions.map((funct) => {
+        const label = funct.label ?? funct.onClick.name;
+        return isValidFunction(label) ? label : "";
     });
-
-    math.import(exportFunctions);
 }
 
-function renderButtons(
-    {
-        template = "basic",
-        functions: customFunctions = []
-    }: CalculatorProps,
-    input: (input: string) => void,
-) {
+function initializeCustomFunctions(functions: Function[]) {
+    if (functions.length === 0) return;
 
-    initializeCustomFunctions(customFunctions);
+    const functionLabels = retrieveAndValidateCustomFunctionLabels(functions);
+
+    const mathFunctions = functions.reduce<Record<string, Function['onClick']>>((acc, funct, index) => {
+        acc[functionLabels[index]] = funct.onClick;
+        return acc;
+    }, {});
+
+    math.import(mathFunctions, { override: true });
+}
+
+function renderButtons(template: string, customFunctions: Function[], input: (input: string) => void) {
 
     let operations: string[] = ["+", "-", "*", "/", "^"];
-    let functions: string[] = ["sqrt(", "yar(", "ar("];
+    let functions: string[] = ["sqrt("];
     let groupings: string[] = ["(", ")"];
 
     switch (template) {
         case "basic":
             operations = operations.slice(0, 4)
+            functions = functions.slice(0)
+            groupings = groupings.slice(0)
             break;
         case "scientific":
             operations = operations.slice(0, 8)
+            functions = functions.slice(0,1)
+            groupings = groupings.slice(0,2)
             break;
         default:
             operations = operations.slice(operations.length)
     }
-    
+
+    functions = functions.concat(retrieveAndValidateCustomFunctionLabels(customFunctions))
 
     return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].concat(operations).concat(functions).concat(groupings).map((label) => (
         <button key={label} onClick={() => input(label)}>
@@ -70,10 +61,14 @@ function renderButtons(
     ));
 }
 
-export default function Calculator({ template, validation = true, functions }: CalculatorProps) {
+export default function Calculator({ template = "basic", validation = true, functions = [] }: CalculatorProps) {
 
     const [equation, setEquation] = useState("0");
     const [isSolution, setIsSolution] = useState(false);
+
+    useEffect(() => {
+        initializeCustomFunctions(functions);
+    }, [functions]);
 
     function input(input: string) {
         setEquation(validateInput(input, equation, isSolution, validation));
@@ -86,7 +81,7 @@ export default function Calculator({ template, validation = true, functions }: C
             setIsSolution(true);
         }
         catch (e) {
-            console.log(e)
+            console.error(e);
             setEquation(equation);
         }
     }
@@ -94,14 +89,12 @@ export default function Calculator({ template, validation = true, functions }: C
         return (
             <>
                 <MathRenderer input={equation}/>
-                <p>
-                    {equation}
-                </p>
+                <p>{equation}</p>
 
                 <div className="calculatorBody">
                     <button onClick={() => input("")}>CE</button>
                     <button onClick={() => input("-1")}>del</button>
-                    {renderButtons({ template, functions }, input)}
+                    {renderButtons(template, functions, input)}
                     <button onClick={() => validateSolution()}>=</button>
                 </div>
             </>

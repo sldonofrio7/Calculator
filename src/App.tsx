@@ -10,7 +10,7 @@ export default function App() {
       <h1 className="text">
         Calculator
       </h1>
-      <Calculator validation={false} functions={[{label: "cubeRoot(", onClick: cubeRoot()}]}/>
+      <Calculator validation={false} functions={[{ onClick: cubeRoot, label: "c*" }]} />
     </>
   );
 }
